@@ -88,6 +88,8 @@ def main() -> None:
             w.writerow([r["dataset"], r["id"], pred])
             if i % 500 == 499:
                 f.flush()
+                if a.device == "mps":
+                    torch.mps.empty_cache()                               # photos of every size: the MPS cache only grows
                 print(f"{name}: {i + 1}/{len(rows)}  {(i + 1) / (time.time() - t0):.1f} img/s", flush=True)
     print(f"{name}: {len(rows)} scored, {failed} failed, {len(rows) / max(time.time() - t0, 1e-9):.1f} img/s -> {out}")
 
