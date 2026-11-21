@@ -10,6 +10,7 @@ cells it trained on are shown with a dagger and left out of that mean.
 from __future__ import annotations
 
 import csv
+import json
 from collections import defaultdict
 from pathlib import Path
 
@@ -59,6 +60,9 @@ def main() -> None:
             if r["pred"] not in ("", "nan"):
                 pred[r["dataset"]][r["id"]] = float(r["pred"])
         seen = TRAINED_ON.get(p.stem, None)
+        if p.with_suffix(".json").exists():                              # our own contestants declare what they trained on
+            meta = json.loads(p.with_suffix(".json").read_text())
+            seen = set(meta["trained_on"]) | set(meta.get("seen_override", [])) | ({"eva"} if "ava" in meta["trained_on"] else set())
         row = {"name": p.stem, "cells": {}, "known": seen is not None}
         for d in PHOTO + PROBE + SLICES:
             ds, tag = d if isinstance(d, tuple) else (d, None)
