@@ -1,0 +1,6 @@
+[project]
+name = "aesbench"
+version = "0.1.0"
+description = "A held-out benchmark for photo aesthetics scorers"
+requires-python = ">=3.12,<3.13"
+dependencies = ["numpy", "pillow", "openpyxl", "torch", "torchvision", "pyiqa", "open_clip_torch", "transformers", "safetensors", "setuptools<81", "scipy"]

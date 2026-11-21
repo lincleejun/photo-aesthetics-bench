@@ -1,0 +1,12 @@
+# nothing from the datasets, the manifest or per-image outputs is ever committed
+*.csv
+*.npy
+*.npz
+*.safetensors
+*.pt
+*.pth
+*.jpg
+*.png
+salt.txt
+.venv/
+__pycache__/
