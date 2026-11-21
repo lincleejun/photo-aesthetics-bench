@@ -57,6 +57,8 @@ def main() -> None:
     name = a.name or (f"{a.metric}-{a.task}" if a.task else a.metric)
     out = PREDS / f"{name}.csv"
     PREDS.mkdir(exist_ok=True)
+    if out.exists() and not out.read_text().endswith("\n"):            # killed mid-line: drop the torn last row
+        out.write_text(out.read_text().rsplit("\n", 1)[0] + "\n")
     done = {(r["dataset"], r["id"]) for r in csv.DictReader(open(out))} if out.exists() else set()
     rows = [r for r in test_rows(a.limit) if (r["dataset"], r["id"]) not in done]
     metric = pyiqa.create_metric(a.metric, device=a.device)
@@ -66,7 +68,10 @@ def main() -> None:
         w = csv.writer(f)
         if not done:
             w.writerow(["dataset", "id", "pred"])
-        for i, (r, x) in enumerate(zip(rows, pool.map(load, (r["path"] for r in rows)))):
+        # decode ahead in blocks of 64: Executor.map submits everything at once and would hold every photo in memory
+        ahead = ((r, x) for j in range(0, len(rows), 64) for r, x in
+                 zip(rows[j:j + 64], list(pool.map(load, (r["path"] for r in rows[j:j + 64])))))
+        for i, (r, x) in enumerate(ahead):
             try:
                 pred = float(metric(x.to(a.device), **kw).flatten()[0])
             except Exception as e:
