@@ -53,6 +53,13 @@ def main() -> None:
     ap.add_argument("--device", default="mps")
     a = ap.parse_args()
     import pyiqa
+    import transformers
+
+    if not hasattr(transformers.PreTrainedModel, "invert_attention_mask"):   # removed in transformers 5; qalign calls it
+        def invert(self, mask):
+            m = (mask[:, None, :, :] if mask.dim() == 3 else mask[:, None, None, :]).to(self.dtype)
+            return (1.0 - m) * torch.finfo(self.dtype).min
+        transformers.PreTrainedModel.invert_attention_mask = invert
 
     name = a.name or (f"{a.metric}-{a.task}" if a.task else a.metric)
     out = PREDS / f"{name}.csv"
