@@ -13,7 +13,7 @@ import numpy as np
 import torch
 
 from aesbench.manifest import ROOT
-from aesbench.pixels import DONE as PIXELS_DONE, open_cache, paths
+from aesbench.pixels import CACHE, DONE as PIXELS_DONE, paths, read
 
 FEATS = ROOT / "bench" / "features"
 CLIP_NORM = ((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
@@ -64,8 +64,7 @@ BACKBONES = {"siglip2-base": siglip2, "clip-l14": clip_l14, "dinov2-base": dinov
 
 def open_feats(name: str, n: int | None = None) -> np.ndarray:
     n = n or len(paths())
-    raw = np.memmap(FEATS / f"{name}.f16", np.float16, "r")
-    return raw.reshape(n, -1)
+    return np.fromfile(FEATS / f"{name}.f16", np.float16).reshape(n, -1)       # 1-2 GB: read it into memory
 
 
 def main() -> None:
@@ -78,7 +77,7 @@ def main() -> None:
     n = len(paths())
     ready = int(PIXELS_DONE.read_text())
     stop = min(a.limit or n, ready)
-    px = open_cache(n)
+    px = open(CACHE, "rb")
     (mean, std), encode = BACKBONES[a.backbone](a.device)
     mean, std = (torch.tensor(v, device=a.device).view(1, 3, 1, 1) for v in (mean, std))
     FEATS.mkdir(exist_ok=True)
@@ -87,11 +86,12 @@ def main() -> None:
     out, t0 = None, time.time()
     with torch.inference_mode():
         for i in range(start, stop, a.batch):
-            x = torch.from_numpy(np.ascontiguousarray(px[i:min(i + a.batch, stop)])).to(a.device)
+            x = torch.from_numpy(read(px, i, min(a.batch, stop - i)).copy()).to(a.device)
             y = encode((x.permute(0, 3, 1, 2).float().div(255) - mean) / std).float().cpu().numpy()
             if out is None:
-                out = np.memmap(out_p, np.float16, "r+" if out_p.exists() else "w+", shape=(n, y.shape[1]))
-            out[i:i + len(y)] = y
+                out, dim = open(out_p, "r+b" if out_p.exists() else "w+b"), y.shape[1]
+            out.seek(i * dim * 2)
+            out.write(y.astype(np.float16).tobytes())
             if (i // a.batch) % 40 == 39 or i + a.batch >= stop:
                 out.flush()
                 done_p.write_text(str(i + len(y)))
