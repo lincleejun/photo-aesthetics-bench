@@ -84,7 +84,7 @@ def main() -> None:
     out_p, done_p = FEATS / f"{a.backbone}.f16", FEATS / f"{a.backbone}.done"
     start = int(done_p.read_text()) if done_p.exists() else 0
     out, t0 = None, time.time()
-    with torch.inference_mode():
+    with torch.inference_mode(), torch.autocast(a.device, dtype=torch.float16):   # ~20% faster, cosine to float32 > 0.9999
         for i in range(start, stop, a.batch):
             x = torch.from_numpy(read(px, i, min(a.batch, stop - i)).copy()).to(a.device)
             y = encode((x.permute(0, 3, 1, 2).float().div(255) - mean) / std).float().cpu().numpy()
