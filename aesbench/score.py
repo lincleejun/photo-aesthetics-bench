@@ -68,8 +68,8 @@ def main() -> None:
             ds, tag = d if isinstance(d, tuple) else (d, None)
             ids = [k for k in gold[ds] if tag is None or tag in tags[ds, k].split("|")]
             have = [k for k in ids if k in pred[ds]]
-            if len(have) < 0.5 * len(ids) or len(ids) < 30:
-                continue                                                   # not sat (or still running)
+            if len(have) < 0.99 * len(ids) or len(ids) < 30:
+                continue                                                   # not sat, or still sitting: no partial marks
             floor = min(pred[ds].values()) - 1.0
             x = np.array([pred[ds].get(k, floor) for k in ids])
             y = np.array([gold[ds][k] for k in ids])
