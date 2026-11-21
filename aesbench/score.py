@@ -32,7 +32,9 @@ TRAINED_ON = {
     "topiq_iaa": AVA_, "topiq_iaa_res50": AVA_, "nima": AVA_, "nima-vgg16-ava": AVA_, "musiq-ava": AVA_,
     "laion_aes": AVA_,                                    # sac+logos+ava1-l14-linearMSE
     "clipiqa+": {"koniq10k"}, "topiq_nr": {"koniq10k"}, "musiq": {"koniq10k"},
-    "qalign-aesthetic": None, "qrealign-mini-aesthetic": None,            # ponytail: read their cards, then fill in
+    # q-future/one-align (Q-Align paper, arXiv:2312.17090): KonIQ + SPAQ + KADID (quality), AVA (aesthetics), LSVQ (video).
+    # Q-ReAlign's card says "the unified ONE-ALIGN setting" without listing the sets again: taken to be the same.
+    "qalign-aesthetic": AVA_ | {"koniq10k", "spaq"}, "qrealign-mini-aesthetic": AVA_ | {"koniq10k", "spaq"},
 }
 
 
@@ -96,6 +98,12 @@ def main() -> None:
     for r in board:
         head = "?" if r["headline"] is None else f"**{r['headline']:.3f}** ({r['n_unseen']})"
         out.append(f"| {r['name']} | {head} | " + " | ".join(cell(r, d) for d in PHOTO) + " |")
+    people = MANIFEST.parent / "ceiling.json"                             # written by aesbench.ceiling
+    if people.exists():
+        c = json.loads(people.read_text())
+        for label, key in (("*people: ceiling for a model*", "ceiling"), ("*people: half the raters against the other half*", "half")):
+            out.append(f"| {label} | | " + " | ".join(f"{c[d][key]:.3f}" if d in c else "—" for d in PHOTO) + " |")
+        out += ["", "The two rows in italics are people marked the same way (see `aesbench/ceiling.py`); sets that publish only a mean have none."]
     out += ["", "## Side papers: technical quality (koniq10k, spaq, paq2piq), paintings (baid, lapis), animal slices", "",
             "| Model | " + " | ".join(PROBE + [f"{d}:{t}" for d, t in SLICES]) + " |", "|---|" + "---|" * len(PROBE + SLICES)]
     for r in board:
